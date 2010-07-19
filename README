@@ -1,32 +1,48 @@
 This a python module for using Vimeo's API.
 
-This is a complete rewrite of the previous version. Support
-for v2 API is underway. Currently, do not expect anything.
-
-For debugging purprose, I heavily rely on hurl (http://hurl.it/).
-The author of this website is also the author of the python module for oauth used here.
+I've pretty much rewritten all of it again with this fork, cutting down the 
+code, making it a bit more pythonic, and ripping out the curl and oauth
+pieces of it in favor of the newer oauth2 (which happens to wrap httplib2).
+python-oauth2 can be found here on github and should be the only requirement
+(though I haven't double checked yet, still doing some work on the code).
 
 INSTALL
 -------
 
-Regular python distutils:
-
- $ python setup.py install prefix=/somewhere/in/the/universe
-
-You can also create debian package:
-
- $ dpkg-buildpackage
-
+If you'd like to install, I wouldn't use anything that's provided in the repo
+here, it's leftover from the fork that I haven't rewritten yet. All that works
+is currently located in __init__.py, so just place that module wherever you'd 
+like for now.
 
 USAGE
 -----
 
-Not yet ! But you can check the vimeo-uploadv2.py and vimeo-query.py script.
-They should (at least, I plan to) fulfil most requirements.
+I haven't tested uploading, which I'd guess won't work but shouldn't be hard
+to coerce. Everything else in the Advanced API should work. You'll need to
+provide your Key and Secret. The module by default looks for it in settings.py
+but change that to wherever you'd like. 
 
+Everything right now flows through the VimeoClient class. Instantiate, then 
+authorization and tokening should be handled using the .client attribute (which
+is an instantiated oauth2.Client instance). See the Vimeo API for the steps you 
+need to take and the oauth2 docs for how to take them (if you're doing this in
+django like I am it was all of 4 lines of code. The oauth2 docs have a twitter
+example that is just about exactly the same process). I'll update this file
+with better instructions just in case when I get the chance.
 
-CONTRIBUTORS
+To call API methods (including those that do not require the above 
+authentication) the syntax is easy: just call the method on the VimeoClient
+instance using the full path to the method from the API, replacing the "."'s
+with "_". Pass parameters in by keyword. See the example:
+
+To call the vimeo.videos.getInfo method:
+
+    v = VimeoClient()
+    v.vimeo_videos_getInfo(video_id="5775787")
+
+CONTRIBUTORS (From the Original README)
 ------------
-Thanks :)
 
 Bengt Sjölén
+dkm (the main branch owner)
+mishk (me)
