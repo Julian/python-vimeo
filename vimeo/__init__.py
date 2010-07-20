@@ -25,6 +25,7 @@ THE SOFTWARE.
 """
 Python module to interact with Vimeo through its API (version 2)
 """
+import urlparse
 
 import oauth2
 
@@ -36,6 +37,7 @@ from settings import VIMEO_KEY, VIMEO_SECRET
 REQUEST_TOKEN_URL = 'http://vimeo.com/oauth/request_token'
 ACCESS_TOKEN_URL = 'http://vimeo.com/oauth/access_token'
 AUTHORIZATION_URL = 'http://vimeo.com/oauth/authorize'
+# Vimeo API request URLs
 API_REST_URL = 'http://vimeo.com/api/rest/v2/'
 API_V2_CALL_URL = 'http://vimeo.com/api/v2/'
 
@@ -70,6 +72,10 @@ class VimeoClient(object):
         self.key = key
         self.secret = secret
         self.consumer = oauth2.Consumer(self.key, self.secret)
+
+        # any request made with the .client attr below is automatically
+        # signed, so this won't be needed unless you want to make a manual
+        # request for some reason
         self.signature_method = oauth2.SignatureMethod_HMAC_SHA1()
 
         if token and token_secret:
@@ -80,11 +86,10 @@ class VimeoClient(object):
         self.client = oauth2.Client(self.consumer, self.token)
 
     def __getattr__(self, name):
-
         # don't do virtual methods for internal method names
-        if name.startswith("_"):
+        if not name.startswith("vimeo"):
             raise AttributeError(
-                    "No internal method found with the name {0}".format(name))
+                "No attribute found with the name {0}.".format(name))
 
         def _do_vimeo_call(**params):
             from urllib import urlencode
@@ -155,3 +160,45 @@ class VimeoClient(object):
 
     def _no_processing(self, response_headers, response_content):
         return response_headers, response_content
+
+    #### 3-legged oAuth
+    def _is_success(self, response_headers):
+        if response_headers["status"] != "200":
+            raise VimeoAPIError(
+                    "Invalid response {0}".format(response_headers["status"]))
+        return True
+
+    def _get_new_token(self, request_url, *args, **kwargs):
+        """
+        Gets a new token from the request_url and sets it to self.token on
+        success.
+        """
+        resp, content = self.client.request(request_url, *args, **kwargs)
+
+        if self._is_success(resp):
+            new_token = dict(urlparse.parse_qsl(content))
+            self.token = oauth2.Token(new_token["oauth_token"],
+                                      new_token["oauth_token_secret"])
+            self.client = oauth2.Client(self.consumer, self.token)
+
+    def get_request_token(self):
+        self._get_new_token(REQUEST_TOKEN_URL)
+
+    def get_authorization_url(self, permission="read"):
+        if not self.token:
+            self.get_request_token()
+        return "{0}?oauth_token={1}&permission={2}".format(AUTHORIZATION_URL,
+                                                           self.token.key,
+                                                           permission)
+
+    def set_verifier(self, verifier):
+        if not self.token:
+            raise VimeoAPIError("No request token present.")
+        self.token.set_verifier(verifier)
+        self.client = oauth2.Client(self.consumer, self.token)
+
+    def get_access_token(self):
+        if not self.token:
+            raise VimeoAPIError("No request token present.")
+        self._get_new_token(ACCESS_TOKEN_URL)
+        return self.token.key, self.token.secret

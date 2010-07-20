@@ -1,48 +1,63 @@
 This a python module for using Vimeo's API.
 
-I've pretty much rewritten all of it again with this fork, cutting down the 
-code, making it a bit more pythonic, and ripping out the curl and oauth
-pieces of it in favor of the newer oauth2 (which happens to wrap httplib2).
-python-oauth2 can be found here on github and should be the only requirement
-(though I haven't double checked yet, still doing some work on the code).
+This fork is a third complete rewrite, including cutting down the code from
+around 1000 lines to 200, making it a bit more pythonic, and ripping out
+curl and oauth in favor of the newer oauth2 (which happens to wrap httplib2).
+python-oauth2 can be found here (http://github.com/simplegeo/python-oauth2)
+and should be the only requirement as of the last update to this readme.
 
 INSTALL
 -------
 
-If you'd like to install, I wouldn't use anything that's provided in the repo
-here, it's leftover from the fork that I haven't rewritten yet. All that works
-is currently located in __init__.py, so just place that module wherever you'd 
-like for now.
+Distutil's install hasn't been written yet and I wouldn't use anything that's
+provided in the main branch's repo for this. Everything that you need is in
+the __init__.py module in the "vimeo" folder, so just place that folder 
+somewhere in your python path for now.
+
+STATUS
+------
+
+Just about everything in the Advanced API should work. You'll need to
+provide your API key and secret. The module by default looks for it in settings.py
+but change that to wherever you'd like. 
+
+I'm currently in the process of testing uploading, I'm guessing it mostly works
+and might just need some gentle coercing. I need to check if there's a progress
+bar or similar support in httplib2, otherwise I guess when I get the chance
+that's one thing to be implemented. If you encounter any other API methods with
+unexpected behavior that you think is due to the module, please let me know
+(preferrably by filing an issue ticket).
 
 USAGE
 -----
 
-I haven't tested uploading, which I'd guess won't work but shouldn't be hard
-to coerce. Everything else in the Advanced API should work. You'll need to
-provide your Key and Secret. The module by default looks for it in settings.py
-but change that to wherever you'd like. 
-
 Everything right now flows through the VimeoClient class. Instantiate, then 
-authorization and tokening should be handled using the .client attribute (which
-is an instantiated oauth2.Client instance). See the Vimeo API for the steps you 
-need to take and the oauth2 docs for how to take them (if you're doing this in
-django like I am it was all of 4 lines of code. The oauth2 docs have a twitter
-example that is just about exactly the same process). I'll update this file
-with better instructions just in case when I get the chance.
+if you want to call API methods that require authentication, call the provided
+get_request_token, get_authorization_url and get_access_token methods to do
+the 3-legged authentication. Or if you already have an access token pass it in
+to the VimeoClient constructor. Also, if you're using this module with django
+like I am, the oauth2 docs have a quick example (using twitter which has the
+same authorization process just about) that you can take a look at for 3-legged
+authorization. For unauthenticated API calls, you're good to go right after
+instantiating.
 
-To call API methods (including those that do not require the above 
-authentication) the syntax is easy: just call the method on the VimeoClient
-instance using the full path to the method from the API, replacing the "."'s
-with "_". Pass parameters in by keyword. See the example:
+To call API methods the syntax is easy: find the path to the method in the API
+documentation, and call the method on the VimeoClient instance using the full 
+path, separated by underscores (not periods!). Pass any parameters in by 
+keyword. See the example:
 
-To call the vimeo.videos.getInfo method:
+To call the vimeo >> videos >> getInfo method:
 
     v = VimeoClient()
     v.vimeo_videos_getInfo(video_id="5775787")
 
+You can control the output format of the response by either passing in a format
+argument to the initializer or by using the .default_response_property. See the
+docstring (json is recommended for quick lookup as it returns a python dict).
+
 CONTRIBUTORS (From the Original README)
 ------------
 
-Bengt Sjölén
-dkm (the main branch owner)
-mishk (me)
+Bengt Sjölén (first version)
+Marc Poulhiès (second rewrite)
+mishk (current rewrite)
