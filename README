@@ -58,6 +58,6 @@ docstring (json is recommended for quick lookup as it returns a python dict).
 CONTRIBUTORS (From the Original README)
 ------------
 
-Bengt Sjölén (first version)
-Marc Poulhiès (second rewrite)
-mishk (current rewrite)
+Bengt Sjölén
+Marc Poulhiès (original module author)
+mishk (this fork's rewrite)
