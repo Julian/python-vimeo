@@ -86,7 +86,7 @@ class VimeoClient(object):
         self.client = oauth2.Client(self.consumer, self.token)
 
     def __getattr__(self, name):
-        # don't do virtual methods for internal method names
+        # Only do virtual methods for method names that are part of the API
         if not name.startswith("vimeo"):
             raise AttributeError(
                 "No attribute found with the name {0}.".format(name))
@@ -170,8 +170,8 @@ class VimeoClient(object):
 
     def _get_new_token(self, request_url, *args, **kwargs):
         """
-        Gets a new token from the request_url and sets it to self.token on
-        success.
+        Internal method that gets a new token from the request_url and sets it
+        to self.token on success.
         """
         resp, content = self.client.request(request_url, *args, **kwargs)
 
@@ -182,9 +182,20 @@ class VimeoClient(object):
             self.client = oauth2.Client(self.consumer, self.token)
 
     def get_request_token(self):
+        """
+        (oAuth Step 1)
+
+        Gets a request token from the API.
+        """
         self._get_new_token(REQUEST_TOKEN_URL)
 
     def get_authorization_url(self, permission="read"):
+        """
+        (oAuth Step 2a)
+
+        Uses the request token received to build an authorization url which
+        should be visited by the user to grant permission to their account.
+        """
         if not self.token:
             self.get_request_token()
         return "{0}?oauth_token={1}&permission={2}".format(AUTHORIZATION_URL,
@@ -192,13 +203,29 @@ class VimeoClient(object):
                                                            permission)
 
     def set_verifier(self, verifier):
+        """
+        (oAuth Step 2b)
+
+        Should be called with the user's verifier string that is displayed
+        after granting permission at the authorization url.
+        """
         if not self.token:
             raise VimeoAPIError("No request token present.")
         self.token.set_verifier(verifier)
         self.client = oauth2.Client(self.consumer, self.token)
 
     def get_access_token(self):
+        """
+        (oAuth Step 3)
+
+        Gets an access token from the API. The instance should already have
+        received a request token and used the get_authorization_url and
+        set_verifier methods.
+
+        Returns the new access token in addition to saving it to self.token, in
+        case it needs to be saved in another location like a token database.
+        """
         if not self.token:
             raise VimeoAPIError("No request token present.")
         self._get_new_token(ACCESS_TOKEN_URL)
-        return self.token.key, self.token.secret
+        return self.token
