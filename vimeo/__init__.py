@@ -116,6 +116,11 @@ class VimeoClient(object):
             return self._no_processing(response_headers, response_content)
         return _do_vimeo_call
 
+    def __repr__(self):
+        tokened = "Tokened " if self.token else ""
+        return "<{0}Vimeo API Requester ({1})>".format(tokened,
+                                         self.default_response_format.upper())
+
     # no @property.setter in 2.5 means manual property creation...
     def _get_default_response_format(self):
         """
