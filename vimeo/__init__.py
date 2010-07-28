@@ -25,7 +25,10 @@ THE SOFTWARE.
 """
 Python module to interact with Vimeo through its API (version 2)
 """
+import logging
+import time
 import urlparse
+from urllib import urlencode
 
 import oauth2
 
@@ -41,6 +44,9 @@ AUTHORIZATION_URL = 'http://vimeo.com/oauth/authorize'
 API_REST_URL = 'http://vimeo.com/api/rest/v2/'
 API_V2_CALL_URL = 'http://vimeo.com/api/v2/'
 
+stats_logger = logging.getLogger("vimeo_stats_logger")
+stats_logger.setLevel(logging.INFO)
+
 class VimeoAPIError(Exception):
     pass
 
@@ -52,20 +58,28 @@ class VimeoClient(object):
     In addition, each method can take an additional parameter:
 
         process (default: True):
-            If False, returns the unprocessed response along with the response
-            headers for you to do your own parsing and processing. Respects the
+            If False, returns a tuple with the response headers and unprocessed
+            response content to do your own parsing on. Respects the object's
             default_response_format attribute or the "format" parameter.
 
-    For authentication steps, consult the oauth2 documentation and the Vimeo
-    API documentation for the steps needed to get the right tokens. You will
-    want to use this class' .client object (an oauth2.Client instance which is
-    instantiated with a Consumer instance from your key and secret) to make
-    your requests.
+    For three legged authentication, use the get_request_token,
+    get_authentication_url, set_verifier, and get_access_token methods.
 
-    If you already have an authorization token and secret, pass
+    If you already have an authorization token and secret, pass it in to the
+    initializer.
+
+    By default, this client will cache API requests for 120 seconds. To
+    override this setting, pass in a different cache_timeout parameter (in
+    seconds), or to disable caching, set cache_timeout to 0.
     """
     def __init__(self, key=VIMEO_KEY, secret=VIMEO_SECRET, format="xml",
-                 token=None, token_secret=None, verifier=None):
+                 token=None, token_secret=None, verifier=None,
+                 cache_timeout=120):
+
+        # memoizing
+        self._cache = {}
+        self._timeouts = {}
+        self.cache_timeout = cache_timeout
 
         self.default_response_format = format
 
@@ -75,7 +89,7 @@ class VimeoClient(object):
 
         # any request made with the .client attr below is automatically
         # signed, so this won't be needed unless you want to make a manual
-        # request for some reason
+        # request for whatever reason
         self.signature_method = oauth2.SignatureMethod_HMAC_SHA1()
 
         if token and token_secret:
@@ -86,40 +100,85 @@ class VimeoClient(object):
         self.client = oauth2.Client(self.consumer, self.token)
 
     def __getattr__(self, name):
-        # Only do virtual methods for method names that are part of the API
+        """
+        Makes virtual methods call the API if they start with "vimeo_", which
+        is the parent namespace of all of the API methods.
+
+        Also allows leaving off the vimeo_ for convenience when calling a
+        method, but if it's a newly added group of methods you may need to use
+        the full syntax.
+        """
+        # anything on this list can have its methods called without adding
+        # vimeo_ to the beginning (so videos_getInfo works, for example)
+        KNOWN_API_GROUPS = ("activity", "albums", "channels", "contacts",
+                            "groups", "oauth", "people", "test", "videos")
+
         if not name.startswith("vimeo"):
+            # convenience method?
+            if any(name.startswith(prefix) for prefix in KNOWN_API_GROUPS):
+                return getattr(self, "vimeo_" + name)
+            # otherwise, this probably isn't an API method
             raise AttributeError(
                 "No attribute found with the name {0}.".format(name))
 
-        def _do_vimeo_call(**params):
-            from urllib import urlencode
+        # memoize cleanup
+        call_time = time.time()
+        # no iteritems, we're changing the dict
+        for k, v in self._timeouts.items():
+            if call_time - v > self.cache_timeout:
+                try:
+                    del self._cache[k]
+                except KeyError:
+                    pass
+                del self._timeouts[k]
 
-            params['method'] = name.replace("_", ".")
+        def _do_vimeo_call(**params):
+            # change these before we memoize
             params.setdefault("format", self.default_response_format)
+
+            # memoize
+            key = (name, frozenset(params.items()))
+            self._timeouts.setdefault(key, call_time)
+            if key in self._cache:
+                return self._cache[key]
+
+            # we want to change these after we memoize, before we call the API
+            process = params.pop("process", True)
+            params['method'] = name.replace("_", ".")
 
             request_uri = "{api_url}?&{params}".format(api_url=API_REST_URL,
                                                       params=urlencode(params))
-            additional_headers = {"User-agent" : "python-vimeo"}
+            headers = {"User-agent" : "python-vimeo"}
 
             response_headers, response_content = self.client.request(
                                                    uri=request_uri,
-                                                   headers=additional_headers)
+                                                   headers=headers)
 
             # call the appropriate process method if process is True (default)
             # and we have an appropriate processor method
             process_function = "_process_{0}".format(params["format"])
-            if params.get("process", True):
+            if process:
                 try:
-                    return getattr(self, process_function)(response_content)
+                    return self._cache.setdefault(key,
+                             getattr(self, process_function)(response_content))
                 except AttributeError:
                     pass
-            return self._no_processing(response_headers, response_content)
+            return self._cache.setdefault(key,
+                                          self._no_processing(response_headers,
+                                                             response_content))
         return _do_vimeo_call
 
     def __repr__(self):
-        tokened = "Tokened " if self.token else ""
-        return "<{0}Vimeo API Requester ({1})>".format(tokened,
+        tokened = "T" if self.token else "Unt"
+        return "<{0}okened Vimeo API Requester ({1})>".format(tokened,
                                          self.default_response_format.upper())
+
+    def flush_cache(self):
+        """
+        Manually clear the response cache.
+        """
+        self._cache = {}
+        self._timeouts = {}
 
     # no @property.setter in 2.5 means manual property creation...
     def _get_default_response_format(self):
@@ -151,12 +210,27 @@ class VimeoClient(object):
     default_response_format = property(_get_default_response_format, _set_default_response_format)
 
     def _process_xml(self, response):
-        from xml.etree import ElementTree
-        return ElementTree.fromstring(response)
+        try:
+            # import chain taken from lxml docs
+            from lxml import etree
+        except ImportError:
+            try:
+                import xml.etree.cElementTree as etree
+            except ImportError:
+                try:
+                    import xml.etree.ElementTree as etree
+                except ImportError:
+                    try:
+                        import cElementTree as etree
+                    except ImportError:
+                        try:
+                            import elementtree.ElementTree as etree
+                        except ImportError:
+                            raise ImportError("ElementTree not found.")
+        return etree.fromstring(response)
 
     def _process_json(self, response):
         import json
-
         response = json.loads(response)
 
         if response["stat"] == "fail":
