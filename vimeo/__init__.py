@@ -34,15 +34,18 @@ import oauth2
 
 # by default expects to find your key and secret in settings.py (django)
 # change this if they're someplace else (expecting strings for both)
-from settings import VIMEO_KEY, VIMEO_SECRET
+try:
+    from settings import VIMEO_KEY, VIMEO_SECRET
+except ImportError:
+    VIMEO_KEY, VIMEO_SECRET = None, None
 
 # oAuth URLs
-REQUEST_TOKEN_URL = 'http://vimeo.com/oauth/request_token'
-ACCESS_TOKEN_URL = 'http://vimeo.com/oauth/access_token'
-AUTHORIZATION_URL = 'http://vimeo.com/oauth/authorize'
+REQUEST_TOKEN_URL = "http://vimeo.com/oauth/request_token"
+ACCESS_TOKEN_URL = "http://vimeo.com/oauth/access_token"
+AUTHORIZATION_URL = "http://vimeo.com/oauth/authorize"
 # Vimeo API request URLs
-API_REST_URL = 'http://vimeo.com/api/rest/v2/'
-API_V2_CALL_URL = 'http://vimeo.com/api/v2/'
+API_REST_URL = "http://vimeo.com/api/rest/v2/"
+API_V2_CALL_URL = "http://vimeo.com/api/v2/"
 
 stats_logger = logging.getLogger("vimeo_stats_logger")
 stats_logger.setLevel(logging.INFO)
