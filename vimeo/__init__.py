@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
+Python module to interact with Vimeo through its API (version 2)
+"""
+
+"""
 The MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,10 +24,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-"""
-
-"""
-Python module to interact with Vimeo through its API (version 2)
 """
 import logging
 import time
@@ -47,8 +47,11 @@ AUTHORIZATION_URL = "http://vimeo.com/oauth/authorize"
 API_REST_URL = "http://vimeo.com/api/rest/v2/"
 API_V2_CALL_URL = "http://vimeo.com/api/v2/"
 
-stats_logger = logging.getLogger("vimeo_stats_logger")
-stats_logger.setLevel(logging.INFO)
+# Logging setup
+LOG = False
+if LOG:
+    STAT_LOG_FILENAME = "logs/stats.log"
+    logging.basicConfig(filename=STAT_LOG_FILENAME, level=logging.DEBUG)
 
 class VimeoAPIError(Exception):
     pass
@@ -124,6 +127,9 @@ class VimeoClient(object):
             raise AttributeError(
                 "No attribute found with the name {0}.".format(name))
 
+        if LOG:
+            logging.info(name)
+
         # memoize cleanup
         call_time = time.time()
         # no iteritems, we're changing the dict
@@ -147,7 +153,7 @@ class VimeoClient(object):
 
             # we want to change these after we memoize, before we call the API
             process = params.pop("process", True)
-            params['method'] = name.replace("_", ".")
+            params["method"] = name.replace("_", ".")
 
             request_uri = "{api_url}?&{params}".format(api_url=API_REST_URL,
                                                       params=urlencode(params))
@@ -173,15 +179,8 @@ class VimeoClient(object):
 
     def __repr__(self):
         tokened = "T" if self.token else "Unt"
-        return "<{0}okened Vimeo API Requester ({1})>".format(tokened,
+        return "<{0}okened Vimeo API Client ({1})>".format(tokened,
                                          self.default_response_format.upper())
-
-    def flush_cache(self):
-        """
-        Manually clear the response cache.
-        """
-        self._cache = {}
-        self._timeouts = {}
 
     # no @property.setter in 2.5 means manual property creation...
     def _get_default_response_format(self):
@@ -213,8 +212,8 @@ class VimeoClient(object):
     default_response_format = property(_get_default_response_format, _set_default_response_format)
 
     def _process_xml(self, response):
+        # import chain taken from lxml docs
         try:
-            # import chain taken from lxml docs
             from lxml import etree
         except ImportError:
             try:
@@ -236,12 +235,34 @@ class VimeoClient(object):
         import json
         response = json.loads(response)
 
-        if response["stat"] == "fail":
+        status = response.pop("stat")
+        generated_in = response.pop("generated_in")
+
+        if LOG:
+            logging.info(status)
+            logging.info(generated_in)
+
+        if status == "fail":
             raise VimeoAPIError(response["err"]["msg"])
-        return response
+        # response should only have the content we want now in a nested dict
+        if len(response) is not 1:
+            # uh oh... this shouldn't have happened, hopefully the caller can
+            # deal with it
+            if LOG:
+                logging.error(response.keys())
+            return response
+        _, content = response.popitem()
+        return content
 
     def _no_processing(self, response_headers, response_content):
         return response_headers, response_content
+
+    def flush_cache(self):
+        """
+        Manually clear the response cache.
+        """
+        self._cache = {}
+        self._timeouts = {}
 
     #### 3-legged oAuth
     def _is_success(self, response_headers):
@@ -311,3 +332,7 @@ class VimeoClient(object):
             raise VimeoAPIError("No request token present.")
         self._get_new_token(ACCESS_TOKEN_URL)
         return self.token
+
+    #### uploading convenience POSTer
+    def upload(self, **params):
+        raise NotImplemented
