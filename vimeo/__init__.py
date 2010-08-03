@@ -4,27 +4,6 @@
 Python module to interact with Vimeo through its API (version 2)
 """
 
-"""
-The MIT License
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-"""
 import logging
 import time
 import urlparse
@@ -78,6 +57,9 @@ class VimeoClient(object):
     override this setting, pass in a different cache_timeout parameter (in
     seconds), or to disable caching, set cache_timeout to 0.
     """
+
+    _CLIENT_HEADERS = {"User-agent" : "python-vimeo"}
+
     def __init__(self, key=VIMEO_KEY, secret=VIMEO_SECRET, format="xml",
                  token=None, token_secret=None, verifier=None,
                  cache_timeout=120):
@@ -157,11 +139,9 @@ class VimeoClient(object):
 
             request_uri = "{api_url}?&{params}".format(api_url=API_REST_URL,
                                                       params=urlencode(params))
-            headers = {"User-agent" : "python-vimeo"}
-
             response_headers, response_content = self.client.request(
-                                                   uri=request_uri,
-                                                   headers=headers)
+                                                uri=request_uri,
+                                                headers=self._CLIENT_HEADERS)
 
             # call the appropriate process method if process is True (default)
             # and we have an appropriate processor method
@@ -334,5 +314,10 @@ class VimeoClient(object):
         return self.token
 
     #### uploading convenience POSTer
-    def upload(self, **params):
-        raise NotImplemented
+    def start_upload(self, *args, **kwargs):
+        from convenience import VimeoUploader
+
+        quota = self.vimeo_videos_upload_getQuota(format="json")
+        ticket = self.vimeo_videos_upload_getTicket(format="json")
+        return VimeoUploader(vimeo_client=self, ticket=ticket, quota=quota,
+                             *args, **kwargs)
