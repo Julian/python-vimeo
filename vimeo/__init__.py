@@ -26,23 +26,160 @@ AUTHORIZATION_URL = "http://vimeo.com/oauth/authorize"
 API_REST_URL = "http://vimeo.com/api/rest/v2/"
 API_V2_CALL_URL = "http://vimeo.com/api/v2/"
 
-# Logging setup
 LOG = False
-if LOG:
-    STAT_LOG_FILENAME = "logs/stats.log"
-    logging.basicConfig(filename=STAT_LOG_FILENAME, level=logging.DEBUG)
 
 class VimeoError(Exception):
+    """
+    Exception raised by non-API call errors.
+    """
     pass
 
 class VimeoAPIError(Exception):
-    def __init__(self, response):
-        error = response["err"]
-        self.explanation = error.get("expl", None)
-        self.error_code = error.get("code", None)
-        self.msg = error.get("msg", None)
+    """
+    Exception raised by API call errors.
+
+    Provides the error_code and msg from the error, in addition to storing the
+    explanation from the API error response.
+    """
+    def __init__(self, error_code, msg, explanation=None):
+        self.error_code = error_code
+        self.msg = msg
+        self.explanation = explanation
     def __str__(self):
         return "{0} (Code: {1})".format(self.msg, self.error_code)
+
+class ConditionalLogger(object):
+    STAT_LOG_FILE = "logs/stats.log"
+
+    def __init__(self):
+        if LOG:
+            logging.basicConfig(filename=ConditionalLogger.STAT_LOG_FILE,
+                                level=logging.DEBUG)
+    def __getattr__(self, name):
+        # Don't call something like self.something.something() if not LOG
+        if LOG:
+            return getattr(logging, name)
+        else:
+            return lambda *args, **kwargs : None
+
+class FormatProcessor(object):
+    """
+    Base class for format processors.
+
+    Does no processing by default.
+    """
+    def __init__(self):
+        self._status, self._generated_in = None, None
+        self.log = ConditionalLogger()
+    def __call__(self, *args, **kwargs):
+        processed = self.process(*args, **kwargs)
+        try:
+            del self._processing
+        except AttributeError:
+            pass
+        return processed
+
+    @property
+    def status(self):
+        return self._status
+    @status.setter
+    def status(self, value):
+        if value == "fail":
+            raise VimeoAPIError(error_code=self.get_error_code(),
+                                msg=self.get_error_msg(),
+                                explanation=self.get_error_explanation())
+        self.log.info("Status: {0}".format(value))
+        self._status = value
+    @property
+    def generated_in(self):
+        return self._generated_in
+    @generated_in.setter
+    def generated_in(self, value):
+        self.log.info("Generated in: {0}".format(value))
+        self._generated_in = value
+    def process(self, headers, content):
+        self.headers = headers
+        self.content = content
+        return self.headers, self.content
+
+class JSONProcessor(FormatProcessor):
+    """
+    JSON API processor.
+    """
+    def process(self, headers, content):
+        import json
+        self._processing = json.loads(content)
+
+        self.status = self._processing.pop("stat")
+        self.generated_in = self._processing.pop("generated_in")
+
+        # response should only have the content we want now in a nested dict
+        if len(self._processing) is not 1:
+            # uh oh... this shouldn't have happened, hopefully the caller can
+            # deal with it
+            self.log.error("Unexpected response contained {0}".format(
+                                                    self._processing.keys()))
+            return self._processing
+        _, processed_content = self._processing.popitem()
+        return processed_content
+
+    def get_error_msg(self):
+        return self._processing["err"].get("msg", None)
+    def get_error_code(self):
+        return self._processing["err"].get("code", None)
+    def get_error_explanation(self):
+        return self._processing["err"].get("expl", None)
+
+
+class JSONPProcessor(FormatProcessor):
+    """
+    JSONP API processor.
+    """
+    pass
+
+class PHPProcessor(FormatProcessor):
+    """
+    PHP API processor.
+    """
+    pass
+
+class XMLProcessor(FormatProcessor):
+    """
+    XML API processor.
+    """
+    def process(self, headers, content):
+        # import chain taken from lxml docs
+        try:
+            from lxml import etree
+        except ImportError:
+            try:
+                import xml.etree.cElementTree as etree
+            except ImportError:
+                try:
+                    import xml.etree.ElementTree as etree
+                except ImportError:
+                    try:
+                        import cElementTree as etree
+                    except ImportError:
+                        try:
+                            import elementtree.ElementTree as etree
+                        except ImportError:
+                            raise ImportError("ElementTree not found.")
+        self._processing = etree.fromstring(content)
+
+        self.status = self._processing.get("stat")
+        self.generated_in = self._processing.get("generated_in")
+
+        processed_content = self._processing[0]
+        return processed_content
+
+    def get_error_msg(self):
+        return self._processing[0].get("msg", None)
+    def get_error_code(self):
+        return self._processing[0].get("code", None)
+    def get_error_explanation(self):
+        return self._processing[0].get("expl", None)
+
 
 class VimeoClient(object):
     """
@@ -79,6 +216,10 @@ class VimeoClient(object):
         self.cache_timeout = cache_timeout
 
         self.default_response_format = format
+        self.processors = {"JSON" : JSONProcessor(),
+                           "JSONP" : JSONPProcessor(),
+                           "PHP" : PHPProcessor(),
+                           "XML" : XMLProcessor()}
 
         self.key = key
         self.secret = secret
@@ -148,22 +289,14 @@ class VimeoClient(object):
 
             request_uri = "{api_url}?&{params}".format(api_url=API_REST_URL,
                                                       params=urlencode(params))
-            response_headers, response_content = self.client.request(
-                                                uri=request_uri,
-                                                headers=self._CLIENT_HEADERS)
+            headers, content = self.client.request(uri=request_uri,
+                                                 headers=self._CLIENT_HEADERS)
 
             # call the appropriate process method if process is True (default)
             # and we have an appropriate processor method
-            process_function = "_process_{0}".format(params["format"])
-            if process:
-                try:
-                    return self._cache.setdefault(key,
-                             getattr(self, process_function)(response_content))
-                except AttributeError:
-                    pass
-            return self._cache.setdefault(key,
-                                          self._no_processing(response_headers,
-                                                             response_content))
+            processor = self.processors.get(params["format"].upper(),
+                                            FormatProcessor())
+            return self._cache.setdefault(key, processor(headers, content))
         return _do_vimeo_call
 
     def __repr__(self):
@@ -199,49 +332,6 @@ class VimeoClient(object):
         self._default_response_format = value.lower()
 
     default_response_format = property(_get_default_response_format, _set_default_response_format)
-
-    def _process_xml(self, response):
-        # import chain taken from lxml docs
-        try:
-            from lxml import etree
-        except ImportError:
-            try:
-                import xml.etree.cElementTree as etree
-            except ImportError:
-                try:
-                    import xml.etree.ElementTree as etree
-                except ImportError:
-                    try:
-                        import cElementTree as etree
-                    except ImportError:
-                        try:
-                            import elementtree.ElementTree as etree
-                        except ImportError:
-                            raise ImportError("ElementTree not found.")
-        return etree.fromstring(response)
-
-    def _process_json(self, response):
-        import json
-        response = json.loads(response)
-
-        status = response.pop("stat")
-        generated_in = response.pop("generated_in")
-
-        if LOG:
-            logging.info(status)
-            logging.info(generated_in)
-
-        if status == "fail":
-            raise VimeoAPIError(response)
-        # response should only have the content we want now in a nested dict
-        if len(response) is not 1:
-            # uh oh... this shouldn't have happened, hopefully the caller can
-            # deal with it
-            if LOG:
-                logging.error(response.keys())
-            return response
-        _, content = response.popitem()
-        return content
 
     def _no_processing(self, response_headers, response_content):
         return response_headers, response_content
