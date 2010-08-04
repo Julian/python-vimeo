@@ -32,8 +32,17 @@ if LOG:
     STAT_LOG_FILENAME = "logs/stats.log"
     logging.basicConfig(filename=STAT_LOG_FILENAME, level=logging.DEBUG)
 
-class VimeoAPIError(Exception):
+class VimeoError(Exception):
     pass
+
+class VimeoAPIError(Exception):
+    def __init__(self, response):
+        error = response["err"]
+        self.explanation = error.get("expl", None)
+        self.error_code = error.get("code", None)
+        self.msg = error.get("msg", None)
+    def __str__(self):
+        return "{0} (Code: {1})".format(self.msg, self.error_code)
 
 class VimeoClient(object):
     """
@@ -223,7 +232,7 @@ class VimeoClient(object):
             logging.info(generated_in)
 
         if status == "fail":
-            raise VimeoAPIError(response["err"]["msg"])
+            raise VimeoAPIError(response)
         # response should only have the content we want now in a nested dict
         if len(response) is not 1:
             # uh oh... this shouldn't have happened, hopefully the caller can
@@ -245,10 +254,9 @@ class VimeoClient(object):
         self._timeouts = {}
 
     #### 3-legged oAuth
-    def _is_success(self, response_headers):
-        if response_headers["status"] != "200":
-            raise VimeoAPIError(
-                    "Invalid response {0}".format(response_headers["status"]))
+    def _is_success(self, headers):
+        if headers["status"] != "200":
+            raise VimeoError("Invalid response {0}".format(headers["status"]))
         return True
 
     def _get_new_token(self, request_url, *args, **kwargs):
@@ -293,7 +301,7 @@ class VimeoClient(object):
         after granting permission at the authorization url.
         """
         if not self.token:
-            raise VimeoAPIError("No request token present.")
+            raise VimeoError("No request token present.")
         self.token.set_verifier(verifier)
         self.client = oauth2.Client(self.consumer, self.token)
 
@@ -309,7 +317,7 @@ class VimeoClient(object):
         case it needs to be saved in another location like a token database.
         """
         if not self.token:
-            raise VimeoAPIError("No request token present.")
+            raise VimeoError("No request token present.")
         self._get_new_token(ACCESS_TOKEN_URL)
         return self.token
 
