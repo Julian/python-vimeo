@@ -8,6 +8,9 @@ shouldn't completely break either until Vimeo seriously changes their API, keep
 in mind that if something in this module doesn't work, it still might work the
 "conventional" way using just the base module.
 """
+from urllib import urlencode
+
+import httplib2
 import oauth2
 
 from . import VimeoClient
@@ -30,29 +33,33 @@ class VimeoUploader(object):
             self.has_hd_quota = bool(quota["hd_quota"])
             self.upload_space = quota["upload_space"]
 
-    def _post_to_endpoint(self, file_data):
+    def _post_to_endpoint(self, file_data, **kwargs):
         params = {"ticket_id" : self.ticket_id,
                   "chunk_id" : self.chunk_id}
+
         method, consumer, token = (self.vimeo_client.signature_method,
                                    self.vimeo_client.consumer,
                                    self.vimeo_client.token)
 
         request = oauth2.Request.from_consumer_and_token(consumer=consumer,
-                                                         token=token,
-                                                         http_method="POST",
+                                                       token=token,
+                                                       http_method="POST",
                                                        http_url=self.endpoint,
-                                                         parameters=params)
+                                                       parameters=params)
         request.sign_request(method, consumer, token)
 
-        request_uri = "{endpoint}?&{params}".format(endpoint=self.endpoint,
-                                                    params=urlencode(params))
-        response_headers, response_content = self.vimeo_client.client.request(
-                                    uri=request_uri,
-                                    method="POST",
-                                    headers=self.vimeo_client._CLIENT_HEADERS,
-                                    body = {"file_data" : file_data})
-        return response_content
+        # file data should be unsigned as per the API docs
+        body = "{0}&file_data={1}".format(request.to_postdata(), file_data)
+        headers = kwargs.get("headers",
+                             dict(self.vimeo_client._CLIENT_HEADERS))
+        headers.setdefault("Content-Type", "application/x-www-form-urlencoded")
+
+        return httplib2.Http.request(self.vimeo_client.client, self.endpoint,
+                                   method="POST", body=body, headers=headers,
+                                   redirections=httplib2.DEFAULT_MAX_REDIRECTS,
+                                   connection_type=None)
 
     def upload(self, file_data):
+        _, content = self._post_to_endpoint(file_data)
         self.chunk_id += 1
-        return self._post_to_endpoint(file_data)
+        return content
