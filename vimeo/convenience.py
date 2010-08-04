@@ -62,4 +62,5 @@ class VimeoUploader(object):
     def upload(self, file_data):
         _, content = self._post_to_endpoint(file_data)
         self.chunk_id += 1
-        return content
+        return self.vimeo_client.vimeo_videos_upload_verifyChunks(
+                                                ticket_id=self.ticket_id)
