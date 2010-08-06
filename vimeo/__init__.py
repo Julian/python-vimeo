@@ -411,8 +411,16 @@ class VimeoClient(object):
         self._get_new_token(ACCESS_TOKEN_URL)
         return self.token
 
-    #### uploading convenience POSTer
-    def start_upload(self, *args, **kwargs):
+    def get_uploader(self, *args, **kwargs):
+        """
+        Returns a VimeoUploader object that is instantiated with the quota for
+        this client's oauth_token and a new ticket.
+
+        (Because this module isn't meant to assume any particularly rigid API
+        behavior, this method and the VimeoUploader class are merely convenient
+        interfaces for performing an upload. If the API changes, you may still
+        be able to manually follow any new steps in the Upload API docs.)
+        """
         from convenience import VimeoUploader
 
         quota = self.vimeo_videos_upload_getQuota(format="json")
