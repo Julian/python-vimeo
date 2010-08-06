@@ -15,7 +15,7 @@ import urllib2
 import oauth2
 
 from . import VimeoClient, VimeoError, API_REST_URL
-from bolacha import Bolacha as Http
+from httplib2wrap import Http
 
 class VimeoUploader(object):
     """
