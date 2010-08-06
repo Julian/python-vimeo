@@ -343,7 +343,7 @@ class VimeoClient(object):
         self._cache = {}
         self._timeouts = {}
 
-    #### 3-legged oAuth
+    # ---- 3-legged oAuth ----
     def _is_success(self, headers):
         if headers["status"] != "200":
             raise VimeoError("Invalid response {0}".format(headers["status"]))
@@ -411,6 +411,7 @@ class VimeoClient(object):
         self._get_new_token(ACCESS_TOKEN_URL)
         return self.token
 
+    # ---- Upload convenience methods ----
     def get_uploader(self, *args, **kwargs):
         """
         Returns a VimeoUploader object that is instantiated with the quota for
