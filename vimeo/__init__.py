@@ -205,6 +205,8 @@ class VimeoClient(object):
     """
 
     _CLIENT_HEADERS = {"User-agent" : "python-vimeo"}
+    _NO_CACHE = ("vimeo_videos_upload_getTicket",
+                 "vimeo_videos_upload_getQuota")
 
     def __init__(self, key=VIMEO_KEY, secret=VIMEO_SECRET, format="xml",
                  token=None, token_secret=None, verifier=None,
@@ -279,9 +281,10 @@ class VimeoClient(object):
 
             # memoize
             key = (name, frozenset(params.items()))
-            self._timeouts.setdefault(key, call_time)
-            if key in self._cache:
-                return self._cache[key]
+            if not name in self._NO_CACHE:
+                self._timeouts.setdefault(key, call_time)
+                if key in self._cache:
+                    return self._cache[key]
 
             # change these after we memoize, before calling the API
             process = params.pop("process", True)
@@ -296,6 +299,8 @@ class VimeoClient(object):
             # and we have an appropriate processor method
             processor = self._processors.get(params["format"].upper(),
                                              FormatProcessor())
+            if name in self._NO_CACHE:
+                return processor(headers, content)
             return self._cache.setdefault(key, processor(headers, content))
         return _do_vimeo_call
 
