@@ -326,7 +326,7 @@ class VimeoClient(object):
         The global default for your client can also be overriden on a
         per-method basis by passing in a "format" parameter (per the API docs).
         """
-        return self._default_response_format.upper()
+        return self._default_response_format.lower()
 
     def _set_default_response_format(self, value):
         self._default_response_format = value.lower()
