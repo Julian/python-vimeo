@@ -100,7 +100,7 @@ class FormatProcessor(object):
     def process(self, headers, content):
         self.headers = headers
         self.content = content
-        return self.headers, self.content
+        return self.content
 
 class JSONProcessor(FormatProcessor):
     """
