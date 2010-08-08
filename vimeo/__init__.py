@@ -283,7 +283,7 @@ class VimeoClient(object):
             if key in self._cache:
                 return self._cache[key]
 
-            # we want to change these after we memoize, before we call the API
+            # change these after we memoize, before calling the API
             process = params.pop("process", True)
             params["method"] = name.replace("_", ".")
 
@@ -326,7 +326,7 @@ class VimeoClient(object):
         The global default for your client can also be overriden on a
         per-method basis by passing in a "format" parameter (per the API docs).
         """
-        return self._default_response_format
+        return self._default_response_format.upper()
 
     def _set_default_response_format(self, value):
         self._default_response_format = value.lower()
