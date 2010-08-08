@@ -216,10 +216,10 @@ class VimeoClient(object):
         self.cache_timeout = cache_timeout
 
         self.default_response_format = format
-        self.processors = {"JSON" : JSONProcessor(),
-                           "JSONP" : JSONPProcessor(),
-                           "PHP" : PHPProcessor(),
-                           "XML" : XMLProcessor()}
+        self._processors = {"JSON" : JSONProcessor(),
+                            "JSONP" : JSONPProcessor(),
+                            "PHP" : PHPProcessor(),
+                            "XML" : XMLProcessor()}
 
         self.key = key
         self.secret = secret
@@ -294,8 +294,8 @@ class VimeoClient(object):
 
             # call the appropriate process method if process is True (default)
             # and we have an appropriate processor method
-            processor = self.processors.get(params["format"].upper(),
-                                            FormatProcessor())
+            processor = self._processors.get(params["format"].upper(),
+                                             FormatProcessor())
             return self._cache.setdefault(key, processor(headers, content))
         return _do_vimeo_call
 
