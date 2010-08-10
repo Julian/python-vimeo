@@ -44,7 +44,7 @@ class VimeoUploader(object):
         elif file_size > self.max_file_size:
             raise VimeoError("File is larger than the maximum allowed size.")
 
-    def _post_to_endpoint(self, file_data, **kwargs):
+    def _post_to_endpoint(self, open_file):
         params = {"chunk_id" : self.chunk_id,
                   "ticket_id" : self.ticket_id}
 
@@ -66,7 +66,7 @@ class VimeoUploader(object):
         return Http().request_with_files(url=self.endpoint,
                                          method="POST",
                                          body=request,
-                                         body_files={"file_data" : file_data},
+                                         body_files={"file_data" : open_file},
                                          headers=headers)
 
     def upload(self, file_path, chunk=False, chunk_size=2*1024*1024,
@@ -87,4 +87,11 @@ class VimeoUploader(object):
         self.chunk_id += 1
 
         return self.vimeo_client.vimeo_videos_upload_verifyChunks(
+                                                ticket_id=self.ticket_id)
+
+    def complete(self):
+        """
+        Finish an upload.
+        """
+        return self.vimeo_client.vimeo_videos_upload_compete(
                                                 ticket_id=self.ticket_id)
