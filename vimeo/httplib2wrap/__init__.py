@@ -4,7 +4,7 @@
 import urllib
 
 import httplib2
-from multipart import encode_multipart
+from multipart import encode_multipart, BOUNDARY
 
 class Http(httplib2.Http):
     """
