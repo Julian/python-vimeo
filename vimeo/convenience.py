@@ -71,7 +71,7 @@ class VimeoUploader(object):
                                          headers=headers)
 
     def upload(self, file_path, chunk=False, chunk_size=2*1024*1024,
-               chunk_complete_hook=lambda:None):
+               chunk_complete_hook=lambda x : None):
         """
         Performs the steps of an upload. Checks file size and can handle
         splitting into chunks.
@@ -84,14 +84,15 @@ class VimeoUploader(object):
             with open(file_path) as video:
                 this_chunk = video.read(chunk_size)
                 while this_chunk:
-                    file_mimic = StringIO(this_chunk)
-                    # Pretty sure we don't need this, but since the POSTer
-                    # uses the filename in POSTing as is, we'll emulate for now
-                    f_name = video.name.split(".", 1)
-                    file_mimic.name = "{0}-{1}.{2}".format(f_name[0],
-                                                           self.chunk_id,
-                                                           f_name[1])
-                    self._post_to_endpoint(file_mimic)
+                    this_chunk = StringIO(this_chunk)
+                    # Used by POSTer, but pretty sure we don't actually need it
+                    this_chunk.name = video.name
+                    self._post_to_endpoint(this_chunk)
+
+                    chunk_info = {"total_size" : file_size,
+                                  "chunk_size" : chunk_size,
+                                  "chunk_id" : chunk_id,
+                                  "file" : file_path}
                     chunk_complete_hook(chunk_info)
                     self.chunk_id += 1
         else:
