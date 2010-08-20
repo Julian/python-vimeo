@@ -71,7 +71,7 @@ class VimeoUploader(object):
                                          headers=headers)
 
     def upload(self, file_path, chunk=False, chunk_size=2*1024*1024,
-               chunk_complete_hook=lambda x : None):
+               chunk_complete_hook=lambda chunk_info : None):
         """
         Performs the steps of an upload. Checks file size and can handle
         splitting into chunks.
