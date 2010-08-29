@@ -4,9 +4,9 @@
 Module to interface with the oEmbed portion of the Vimeo API.
 """
 from urllib import urlencode
-from urllib2 import urlopen
+from httplib2 import Http
 
-from . import XMLProcessor, JSONProcessor, FormatProcessor
+from . import XMLProcessor, JSONProcessor, FormatProcessor, DEFAULT_HEADERS
 
 
 OEMBED_BASE_URL = "http://vimeo.com/api/oembed"
@@ -43,7 +43,7 @@ class VimeoOEmbedClient(object):
 
     def get_oembed(self, **params):
         format = params.pop("format", self.default_response_format).lower()
-        url = "{0}.{1}".format(OEMBED_BASE_URL, format)
+        processor = self._processors.get(format, FormatProcessor())
+        uri = "{0}.{1}?{2}".format(OEMBED_BASE_URL, format, urlencode(params))
 
-        return self._processors.get(format, FormatProcessor())(urlopen(url,
-                                                               data=params))
+        return processor(*Http().request(uri))
