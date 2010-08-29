@@ -1,11 +1,11 @@
-This a python module for using Vimeo's API.
+These are a collection of python modules for using Vimeo's APIs.
 
 This fork is a third complete rewrite, including cutting down the code from
 around 1000 lines to 200, making it a bit more pythonic, and ripping out
 curl and oauth in favor of the newer oauth2 (which happens to wrap httplib2).
 python-oauth2 can be found here (http://github.com/simplegeo/python-oauth2)
 and should be the only requirement besides (httplib2) as of the last update to
-this readme.
+this readme. Both of those should have come packaged with this binding.
 
 INSTALL
 -------
