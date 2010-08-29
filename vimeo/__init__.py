@@ -108,7 +108,11 @@ class JSONProcessor(FormatProcessor):
     JSON API processor.
     """
     def process(self, headers, content):
-        import json
+        try:
+            # python 2.6
+            import json
+        except ImportError:
+            import simplejson as json
         self._processing = json.loads(content)
 
         try:
