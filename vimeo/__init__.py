@@ -111,8 +111,11 @@ class JSONProcessor(FormatProcessor):
         import json
         self._processing = json.loads(content)
 
-        self.status = self._processing.pop("stat")
-        self.generated_in = self._processing.pop("generated_in")
+        try:
+            self.status = self._processing.pop("stat")
+            self.generated_in = self._processing.pop("generated_in")
+        except KeyError:
+            pass
 
         # response should only have the content we want now in a nested dict
         if len(self._processing) is not 1:
