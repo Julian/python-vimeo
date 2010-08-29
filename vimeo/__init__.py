@@ -207,6 +207,10 @@ class VimeoClient(object):
     _CLIENT_HEADERS = {"User-agent" : "python-vimeo"}
     _NO_CACHE = ("vimeo_videos_upload_getTicket",
                  "vimeo_videos_upload_getQuota")
+    _processors = {"JSON" : JSONProcessor(),
+                   "JSONP" : JSONPProcessor(),
+                   "PHP" : PHPProcessor(),
+                   "XML" : XMLProcessor()}
 
     def __init__(self, key=VIMEO_KEY, secret=VIMEO_SECRET, format="xml",
                  token=None, token_secret=None, verifier=None,
@@ -216,12 +220,7 @@ class VimeoClient(object):
         self._cache = {}
         self._timeouts = {}
         self.cache_timeout = cache_timeout
-
         self.default_response_format = format
-        self._processors = {"JSON" : JSONProcessor(),
-                            "JSONP" : JSONPProcessor(),
-                            "PHP" : PHPProcessor(),
-                            "XML" : XMLProcessor()}
 
         self.key = key
         self.secret = secret
