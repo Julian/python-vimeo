@@ -72,6 +72,7 @@ class FormatProcessor(object):
     def __init__(self):
         self._status, self._generated_in = None, None
         self.log = ConditionalLogger()
+
     def __call__(self, *args, **kwargs):
         processed = self.process(*args, **kwargs)
         try:
@@ -80,9 +81,31 @@ class FormatProcessor(object):
             pass
         return processed
 
+    def get_error_code(self):
+        """
+        Should be defined by the subclass to provide the error code for a
+        current error.
+        """
+        raise NotImplementedError
+
+    def get_error_msg(self):
+        """
+        Should be defined by the subclass to provide the error message for a
+        current error.
+        """
+        raise NotImplementedError
+
+    def get_error_explanation(self):
+        """
+        Should be defined by the subclass to provide the error explanation for
+        a current error.
+        """
+        raise NotImplementedError
+
     @property
     def status(self):
         return self._status
+
     @status.setter
     def status(self, value):
         if value == "fail":
@@ -91,13 +114,16 @@ class FormatProcessor(object):
                                 explanation=self.get_error_explanation())
         self.log.info("Status: {0}".format(value))
         self._status = value
+
     @property
     def generated_in(self):
         return self._generated_in
+
     @generated_in.setter
     def generated_in(self, value):
         self.log.info("Generated in: {0}".format(value))
         self._generated_in = value
+
     def process(self, headers, content):
         self.headers = headers
         self.content = content
@@ -133,8 +159,10 @@ class JSONProcessor(FormatProcessor):
 
     def get_error_msg(self):
         return self._processing["err"].get("msg", None)
+
     def get_error_code(self):
         return self._processing["err"].get("code", None)
+
     def get_error_explanation(self):
         return self._processing["err"].get("expl", None)
 
@@ -183,8 +211,10 @@ class XMLProcessor(FormatProcessor):
 
     def get_error_msg(self):
         return self._processing[0].get("msg", None)
+
     def get_error_code(self):
         return self._processing[0].get("code", None)
+
     def get_error_explanation(self):
         return self._processing[0].get("expl", None)
 
@@ -344,9 +374,6 @@ class VimeoClient(object):
         self._default_response_format = value.lower()
 
     default_response_format = property(_get_default_response_format, _set_default_response_format)
-
-    def _no_processing(self, response_headers, response_content):
-        return response_headers, response_content
 
     def flush_cache(self):
         """
