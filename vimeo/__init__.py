@@ -26,6 +26,7 @@ AUTHORIZATION_URL = "http://vimeo.com/oauth/authorize"
 API_REST_URL = "http://vimeo.com/api/rest/v2/"
 API_V2_CALL_URL = "http://vimeo.com/api/v2/"
 
+DEFAULT_HEADERS = {"User-agent" : "python-vimeo"}
 LOG = False
 
 class VimeoError(Exception):
@@ -204,7 +205,7 @@ class VimeoClient(object):
     seconds), or to disable caching, set cache_timeout to 0.
     """
 
-    _CLIENT_HEADERS = {"User-agent" : "python-vimeo"}
+    _CLIENT_HEADERS = DEFAULT_HEADERS
     _NO_CACHE = ("vimeo_videos_upload_getTicket",
                  "vimeo_videos_upload_getQuota")
     _processors = {"JSON" : JSONProcessor(),
