@@ -85,16 +85,15 @@ class VimeoUploader(object):
                 this_chunk = video.read(chunk_size)
                 while this_chunk:
                     this_chunk = StringIO(this_chunk)
-                    # Used by POSTer, but pretty sure we don't actually need it
-                    this_chunk.name = video.name
                     self._post_to_endpoint(this_chunk)
 
                     chunk_info = {"total_size" : file_size,
                                   "chunk_size" : chunk_size,
-                                  "chunk_id" : chunk_id,
+                                  "chunk_id" : self.chunk_id,
                                   "file" : file_path}
                     chunk_complete_hook(chunk_info)
                     self.chunk_id += 1
+                    this_chunk = video.read(chunk_size)
         else:
             self._post_to_endpoint(open(file_path))
         return self.vimeo_client.vimeo_videos_upload_verifyChunks(

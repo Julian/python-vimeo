@@ -25,11 +25,15 @@ def guess_mime(path):
     return mime or 'application/octet-stream'
 
 def encode_file(key, file_data, boundary=BOUNDARY):
+    try:
+        file_name = file_data.name
+    except AttributeError:
+        file_name = "fileobject"
     return [
         '--' + boundary,
         'Content-Disposition: form-data; name="%s"; filename="%s"' \
-            % (str(key), str(basename(file_data.name))),
-        'Content-Type: %s' % guess_mime(file_data.name),
+            % (str(key), str(basename(file_name))),
+        'Content-Type: %s' % guess_mime(file_name),
         '',
         str(file_data.read())
     ]
