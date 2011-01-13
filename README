@@ -1,35 +1,34 @@
 These are a collection of python modules for using Vimeo's APIs.
 
-This fork is a third complete rewrite, including cutting down the code from
-around 1000 lines to 200, making it a bit more pythonic, and ripping out
-curl and oauth in favor of the newer oauth2 (which happens to wrap httplib2).
-python-oauth2 can be found here (http://github.com/simplegeo/python-oauth2)
-and should be the only requirement besides (httplib2) as of the last update to
-this readme. Both of those should have come packaged with this binding.
 
 INSTALL
 -------
 
-Distutil's install hasn't been written yet and I wouldn't use anything that's
-provided in the main branch's repo for this. Everything that you need is in
-the "vimeo" folder, so just place that folder somewhere in your python path 
-for now until I get a quick second to write up a setup file.
+Just unpack and run:
+
+    $ python setup.py install
+
 
 STATUS
 ------
 
 As far as I know, everything in the Advanced API should work. You'll need to
-provide your API key and secret. The module by default looks for it in settings.py
-but change that to wherever you'd like. If you find anything that doesn't work
-(or of course any bugs), please let me know!
+provide your API key and secret. If you happen to be using this from within a
+django project, this module will check settings.py for an API key and secret to
+use by default. Otherwise, initialize the VimeoClient with your key and secret.
 
-The Uploading and oEmbed APIs are also now supported! Uploading makes use of
-a very simple chunking procedure and an optional callback that you can use
+If you find anything that doesn't work as expected, please let me know!
+
+
+
+The Uploading and oEmbed APIs are also now supported. Uploading makes use of
+a very elementary chunking procedure and an optional callback that you can use
 (to for example do background uploading, build a progress bar, etc.). 
 
 Again, if you encounter any API methods with unexpected behavior that you think
-is due to one of these modules, please let me know (preferrably by filing a
+is due to one of these modules, please let me know (preferably by filing a
 ticket).
+
 
 USAGE
 -----
@@ -63,16 +62,22 @@ argument when initializing or by using the .default_response_property attr.
 JSON might be the most convenient format to use as it'll get you a python dict
 back, but XML might be a bit faster.
 
-In general, see the docstrings which hopefully should be helpful, and when in 
-doubt consult the Vimeo API docs as the behavior of this binding should follow
-the API docs pretty closely. There are some things that I should have
-documented better, hopefully I'll get a chance to get back to them, so for now,
-check the wiki on github, I may have posted something helpful there, or if you
-happen to be stuck, make a post looking for help.
+In general, consult the Vimeo API docs, as the behavior of this binding should
+by design follow the API docs closely. If you happen to be stuck, you can get
+in contact with me by filing a ticket on the git repository.
+
 
 CONTRIBUTORS (From the Original README)
 ------------
 
+This module was a (third) complete rewrite from an old vimeo module.
+
 Bengt Sjölén
 Marc Poulhiès (original module author)
-mishk (this fork's rewrite)
+Julian Berman (current rewrite)
+
+
+LICENSE
+-------
+
+For license details please see the LICENSE.txt file included with this document.
