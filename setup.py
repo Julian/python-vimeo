@@ -12,7 +12,7 @@ setup(name='python-vimeo',
       description='Python Vimeo API Bindings',
       download_url = 'http://github.com/mishk/python-vimeo',
       license='MIT',
-      packages=['vimeo'],
+      packages=['vimeo', 'vimeo.httplib2wrap'],
       requires=['httplib2', 'oauth2'],
       classifiers = [
           'Development Status :: 4 - Beta',

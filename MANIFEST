@@ -1,0 +1,9 @@
+LICENSE.txt
+README
+setup.py
+vimeo/__init__.py
+vimeo/complete_hooks.py
+vimeo/convenience.py
+vimeo/oembed.py
+vimeo/httplib2wrap/__init__.py
+vimeo/httplib2wrap/multipart.py
