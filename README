@@ -1,6 +1,12 @@
 These are a collection of python modules for using Vimeo's APIs.
 
 
+DEPENDENCIES
+------------
+
+This module depends on oauth2 and httplib2 (which is a dependency of oauth2
+itself).
+
 INSTALL
 -------
 
